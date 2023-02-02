@@ -510,6 +510,7 @@ static int cgroup_pidlist_show(struct seq_file *s, void *v)
 	return 0;
 }
 
+extern int kp_active_mode(void);
 static ssize_t __cgroup1_procs_write(struct kernfs_open_file *of,
 				     char *buf, size_t nbytes, loff_t off,
 				     bool threadgroup)
@@ -551,7 +552,11 @@ static ssize_t __cgroup1_procs_write(struct kernfs_open_file *of,
 		!memcmp(of->kn->parent->name, "top-app", sizeof("top-app")) &&
 		is_zygote_pid(task->parent->pid)) {
 		cpu_input_boost_kick_max(1000);
-		devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 500);
+		if (kp_active_mode() == 3 || kp_active_mode() == 0) {
+			devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 500);
+		} else if (kp_active_mode() == 2) {
+			devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 250);
+		}
 	}
 
 out_finish:
