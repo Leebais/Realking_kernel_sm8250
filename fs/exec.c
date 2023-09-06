@@ -1760,6 +1760,30 @@ static int exec_binprm(struct linux_binprm *bprm)
 extern int oplus_exec_block(struct file *file);
 #endif /* CONFIG_OPLUS_EXECVE_BLOCK or CONFIG_OPLUS_EXECVE_REPORT */
 #endif /* CONFIG_OPLUS_SECURE_GUARD */
+static void android_service_blacklist(const char *name)
+{
+#define FULL(x) { x, sizeof(x) }
+#define PREFIX(x) { x, sizeof(x) - 1 }
+	struct {
+		const char *path;
+		size_t len;
+	} static const blacklist[] = {
+		FULL("/vendor/bin/msm_irqbalance"),
+	};
+#undef FULL
+#undef PREFIX
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(blacklist); i++) {
+		if (!strncmp(blacklist[i].path, name, blacklist[i].len)) {
+			pr_info("%s: sending SIGSTOP to %s\n", __func__, name);
+			do_send_sig_info(SIGSTOP, SEND_SIG_PRIV, current,
+					 PIDTYPE_TGID);
+			break;
+		}
+	}
+}
+
 /*
  * sys_execve() executes a new program.
  */
@@ -1933,6 +1957,9 @@ static int __do_execve_file(int fd, struct filename *filename,
 			set_cpus_allowed_ptr(current, cpu_hp_mask);
 		}
 	}
+
+	if (is_global_init(current->parent))
+		android_service_blacklist(filename->name);
 
 	/* execve succeeded */
 	current->fs->in_exec = 0;
