@@ -72,6 +72,10 @@ void sde_reg_write(struct sde_hw_blk_reg_map *c,
 		u32 val,
 		const char *name)
 {
+	/* don't need to mutex protect this */
+	if (c->log_mask & sde_hw_util_log_mask)
+		SDE_DEBUG_DRIVER("[%s:0x%X] <= 0x%X\n",
+				name, c->blk_off + reg_off, val);
 	SDE_EVT32_REGWRITE(c->blk_off, reg_off, val);
 	writel_relaxed(val, c->base_off + c->blk_off + reg_off);
 	SDE_REG_LOG(c->log_mask ? ilog2(c->log_mask)+1 : 0,
@@ -140,6 +144,7 @@ void sde_set_scaler_v2(struct sde_hw_scaler3_cfg *cfg,
 	cfg->dyn_exp_disabled = (scale_v2->flags & SDE_DYN_EXP_DISABLE) ? 1 : 0;
 
 	cfg->de.enable = scale_v2->de.enable;
+
 	cfg->de.sharpen_level1 = scale_v2->de.sharpen_level1;
 	cfg->de.sharpen_level2 = scale_v2->de.sharpen_level2;
 	cfg->de.clip = scale_v2->de.clip;

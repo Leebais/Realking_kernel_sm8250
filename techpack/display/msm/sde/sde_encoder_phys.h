@@ -793,4 +793,6 @@ void sde_encoder_helper_setup_misr(struct sde_encoder_phys *phys_enc,
 int sde_encoder_helper_collect_misr(struct sde_encoder_phys *phys_enc,
 		bool nonblock, u32 *misr_value);
 
+ktime_t sde_encoder_get_last_vsync_ts_cmd(struct sde_encoder_phys *phys_enc);
+
 #endif /* __sde_encoder_phys_H__ */

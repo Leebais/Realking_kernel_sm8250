@@ -20,3 +20,4 @@
 //#ifdef OPLUS_BUG_STABILITY
 #define CONFIG_DRM_OPLUS 1
 //#endif
+

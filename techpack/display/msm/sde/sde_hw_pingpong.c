@@ -45,7 +45,6 @@ static u32 dither_depth_map[DITHER_DEPTH_MAP_INDEX] = {
 
 #ifdef OPLUS_BUG_STABILITY
 extern int oplus_dither_enable;
-extern int dc_apollo_enable;
 #endif
 
 static struct sde_merge_3d_cfg *_merge_3d_offset(enum sde_merge_3d idx,
@@ -390,8 +389,8 @@ static int sde_hw_pp_setup_dither_v1(struct sde_hw_pingpong *pp,
 		SDE_REG_WRITE(c, base + offset, data);
 	}
 #ifdef OPLUS_BUG_STABILITY
-	if(is_oplus_project || (!strcmp(display->panel->name, "samsung ams662zs01 dsc cmd 21623"))) {
-		if(oplus_dither_enable || dc_apollo_enable) {
+	if(is_oplus_project) {
+		if(oplus_dither_enable) {
 			SDE_REG_WRITE(c, base, 1);
 		}
 		else {
@@ -443,7 +442,7 @@ static int sde_hw_pp_connect_external_te(struct sde_hw_pingpong *pp,
 }
 
 static int sde_hw_pp_get_vsync_info(struct sde_hw_pingpong *pp,
-		struct sde_hw_pp_vsync_info *info, bool wr_ptr_only)
+		struct sde_hw_pp_vsync_info *info)
 {
 	struct sde_hw_blk_reg_map *c;
 	u32 val;
@@ -452,14 +451,12 @@ static int sde_hw_pp_get_vsync_info(struct sde_hw_pingpong *pp,
 		return -EINVAL;
 	c = &pp->hw;
 
-	if (!wr_ptr_only) {
-		val = SDE_REG_READ(c, PP_VSYNC_INIT_VAL);
-		info->rd_ptr_init_val = val & 0xffff;
+	val = SDE_REG_READ(c, PP_VSYNC_INIT_VAL);
+	info->rd_ptr_init_val = val & 0xffff;
 
-		val = SDE_REG_READ(c, PP_INT_COUNT_VAL);
-		info->rd_ptr_frame_count = (val & 0xffff0000) >> 16;
-		info->rd_ptr_line_count = val & 0xffff;
-	}
+	val = SDE_REG_READ(c, PP_INT_COUNT_VAL);
+	info->rd_ptr_frame_count = (val & 0xffff0000) >> 16;
+	info->rd_ptr_line_count = val & 0xffff;
 
 	val = SDE_REG_READ(c, PP_LINE_COUNT);
 	info->wr_ptr_line_count = val & 0xffff;

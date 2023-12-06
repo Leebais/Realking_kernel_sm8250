@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
@@ -96,12 +95,6 @@ struct sde_encoder_ops {
 void sde_encoder_get_hw_resources(struct drm_encoder *encoder,
 		struct sde_encoder_hw_resources *hw_res,
 		struct drm_connector_state *conn_state);
-
-/**
- * sde_encoder_trigger_rsc_state_change - rsc state change.
- * @encoder:	encoder pointer
- */
-void sde_encoder_trigger_rsc_state_change(struct drm_encoder *drm_enc);
 
 /**
  * sde_encoder_register_vblank_callback - provide callback to encoder that
@@ -378,7 +371,6 @@ void sde_encoder_rc_unlock(struct drm_encoder *drm_enc);
 void sde_encoder_disable_autorefresh_handler(struct drm_encoder *drm_enc);
 bool sde_encoder_is_disabled(struct drm_encoder *drm_enc);
 #endif
-
 /**
  * sde_encoder_virt_reset - delay encoder virt reset
  * @drm_enc:	Pointer to drm encoder structure

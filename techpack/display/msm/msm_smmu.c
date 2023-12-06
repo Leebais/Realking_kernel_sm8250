@@ -413,6 +413,7 @@ static int msm_smmu_fault_handler(struct iommu_domain *domain,
 	SDE_EVT32(iova, flags);
 	DRM_ERROR("trigger dump, iova=0x%08lx, flags=0x%x\n", iova, flags);
 	DRM_ERROR("SMMU device:%s", client->dev ? client->dev->kobj.name : "");
+	SDE_DBG_DUMP("all", "panic");
 
 	/*
 	 * return -ENOSYS to allow smmu driver to dump out useful
@@ -497,7 +498,6 @@ static struct platform_driver msm_smmu_driver = {
 		.name = "msmdrm_smmu",
 		.of_match_table = msm_smmu_dt_match,
 		.suppress_bind_attrs = true,
-		.probe_type = PROBE_FORCE_SYNCHRONOUS,
 	},
 };
 

@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
@@ -27,9 +26,6 @@
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_flip_work.h>
 #include <linux/clk/qcom.h>
-
-#include <linux/cpu_input_boost.h>
-#include <linux/devfreq_boost.h>
 
 #include "sde_kms.h"
 #include "sde_hw_lm.h"
@@ -1395,7 +1391,7 @@ static void _sde_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 	struct drm_plane_state *state;
 	struct sde_crtc_state *cstate;
 	struct sde_plane_state *pstate = NULL;
-	struct plane_state pstates[SDE_PSTATES_MAX];
+	struct plane_state *pstates = NULL;
 	struct sde_format *format;
 	struct sde_hw_ctl *ctl;
 	struct sde_hw_mixer *lm;
@@ -1415,6 +1411,10 @@ static void _sde_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 	lm = mixer->hw_lm;
 	stage_cfg = &sde_crtc->stage_cfg;
 	cstate = to_sde_crtc_state(crtc->state);
+	pstates = kcalloc(SDE_PSTATES_MAX,
+			sizeof(struct plane_state), GFP_KERNEL);
+	if (!pstates)
+		return;
 
 	drm_atomic_crtc_for_each_plane(plane, crtc) {
 		state = plane->state;
@@ -1447,7 +1447,7 @@ static void _sde_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 		format = to_sde_format(msm_framebuffer_format(pstate->base.fb));
 		if (!format) {
 			SDE_ERROR("invalid format\n");
-			return;
+			goto end;
 		}
 
 		if (pstate->stage == SDE_STAGE_BASE && format->alpha_enable)
@@ -1537,6 +1537,9 @@ static void _sde_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 	}
 
 	_sde_crtc_program_lm_output_roi(crtc);
+
+end:
+	kfree(pstates);
 }
 
 static void _sde_crtc_swap_mixers_for_right_partial_update(
@@ -3320,7 +3323,6 @@ static void sde_crtc_atomic_begin(struct drm_crtc *crtc,
 		if (encoder->crtc != crtc)
 			continue;
 
-		sde_encoder_trigger_rsc_state_change(encoder);
 		/* encoder will trigger pending mask now */
 		sde_encoder_trigger_kickoff_pending(encoder);
 	}
@@ -3800,6 +3802,8 @@ void sde_crtc_commit_kickoff(struct drm_crtc *crtc,
 		SDE_EVT32(DRMID(crtc), SDE_EVTLOG_FUNC_CASE2);
 	}
 	sde_crtc->play_count++;
+
+	sde_vbif_clear_errors(sde_kms);
 
 	if (is_error) {
 		_sde_crtc_remove_pipe_flush(crtc);
@@ -4696,7 +4700,7 @@ static int _sde_crtc_check_secure_state(struct drm_crtc *crtc,
 		return rc;
 
 	/*
-	 * secure_crtc is not allowed in a shared toppolgy
+	 * secure_crtc is not allowed in a shared topluslgy
 	 * across different encoders.
 	 */
 	rc = _sde_crtc_check_secure_single_encoder(crtc, state, fb_sec_dir);
@@ -4751,12 +4755,6 @@ static int sde_crtc_onscreenfinger_atomic_check(struct sde_crtc_state *cstate,
 
 	if (!is_dsi_panel(cstate->base.crtc))
 		return 0;
-
-	if (fppressed_index > 0 || fp_mode == 1) {
-		cpu_input_boost_kick_max(500);
-		devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 500);
-		devfreq_boost_kick_max(DEVFREQ_CPU_CPU_LLCC_BW, 500);
-	}
 
 	if (oplus_dimlayer_bl_enable) {
 		int backlight = oplus_get_panel_brightness();
@@ -5016,13 +5014,13 @@ static int _sde_crtc_check_get_pstates(struct drm_crtc *crtc,
 
 	for (i = 1; i < SSPP_MAX; i++) {
 		if (pipe_staged[i]) {
-			if (is_sde_plane_virtual(pipe_staged[i]->plane)) {
-				SDE_ERROR(
-					"r1 only virt plane:%d not supported\n",
-					pipe_staged[i]->plane->base.id);
-				return -EINVAL;
-			}
 			sde_plane_clear_multirect(pipe_staged[i]);
+			if (is_sde_plane_virtual(pipe_staged[i]->plane)) {
+				struct sde_plane_state *psde_state;
+				SDE_DEBUG("r1 only virt plane:%d staged\n",pipe_staged[i]->plane->base.id);
+				psde_state = to_sde_plane_state(pipe_staged[i]);
+				psde_state->multirect_index = SDE_SSPP_RECT_1;
+			}
 		}
 	}
 
@@ -5173,11 +5171,11 @@ static int sde_crtc_atomic_check(struct drm_crtc *crtc,
 {
 	struct drm_device *dev;
 	struct sde_crtc *sde_crtc;
-	struct plane_state pstates[SDE_PSTATES_MAX];
+	struct plane_state *pstates = NULL;
 	struct sde_crtc_state *cstate;
 	struct drm_display_mode *mode;
 	int rc = 0;
-	struct sde_multirect_plane_states multirect_plane[SDE_MULTIRECT_PLANE_MAX];
+	struct sde_multirect_plane_states *multirect_plane = NULL;
 	struct drm_connector *conn;
 	struct drm_connector_list_iter conn_iter;
 
@@ -5193,6 +5191,18 @@ static int sde_crtc_atomic_check(struct drm_crtc *crtc,
 	if (!state->enable || !state->active) {
 		SDE_DEBUG("crtc%d -> enable %d, active %d, skip atomic_check\n",
 				crtc->base.id, state->enable, state->active);
+		goto end;
+	}
+
+	pstates = kcalloc(SDE_PSTATES_MAX,
+			sizeof(struct plane_state), GFP_KERNEL);
+
+	multirect_plane = kcalloc(SDE_MULTIRECT_PLANE_MAX,
+			sizeof(struct sde_multirect_plane_states),
+			GFP_KERNEL);
+
+	if (!pstates || !multirect_plane) {
+		rc = -ENOMEM;
 		goto end;
 	}
 
@@ -5251,6 +5261,8 @@ static int sde_crtc_atomic_check(struct drm_crtc *crtc,
 		goto end;
 	}
 end:
+	kfree(pstates);
+	kfree(multirect_plane);
 	return rc;
 }
 
@@ -5399,7 +5411,7 @@ static void sde_crtc_install_properties(struct drm_crtc *crtc,
 		return;
 	}
 
-	info = vzalloc(sizeof(struct sde_kms_info));
+	info = kzalloc(sizeof(struct sde_kms_info), GFP_KERNEL);
 	if (!info) {
 		SDE_ERROR("failed to allocate info memory\n");
 		return;
@@ -5661,7 +5673,7 @@ static void sde_crtc_install_properties(struct drm_crtc *crtc,
 	msm_property_set_blob(&sde_crtc->property_info, &sde_crtc->blob_info,
 			info->data, SDE_KMS_INFO_DATALEN(info), CRTC_PROP_INFO);
 
-	vfree(info);
+	kfree(info);
 }
 
 static int _sde_crtc_get_output_fence(struct drm_crtc *crtc,
@@ -5724,7 +5736,7 @@ static int sde_crtc_atomic_set_property(struct drm_crtc *crtc,
 	uint64_t fence_user_fd;
 	uint64_t __user prev_user_fd;
 
-	if (unlikely(!crtc || !state || !property)) {
+	if (!crtc || !state || !property) {
 		SDE_ERROR("invalid argument(s)\n");
 		return -EINVAL;
 	}
@@ -5735,13 +5747,13 @@ static int sde_crtc_atomic_set_property(struct drm_crtc *crtc,
 	SDE_ATRACE_BEGIN("sde_crtc_atomic_set_property");
 	/* check with cp property system first */
 	ret = sde_cp_crtc_set_property(crtc, property, val);
-	if (unlikely(ret != -ENOENT))
+	if (ret != -ENOENT)
 		goto exit;
 
 	/* if not handled by cp, check msm_property system */
 	ret = msm_property_atomic_set(&sde_crtc->property_info,
 			&cstate->property_state, property, val);
-	if (unlikely(ret))
+	if (ret)
 		goto exit;
 
 	idx = msm_property_index(&sde_crtc->property_info, property);
@@ -5779,7 +5791,7 @@ static int sde_crtc_atomic_set_property(struct drm_crtc *crtc,
 		cstate->bw_split_vote = true;
 		break;
 	case CRTC_PROP_OUTPUT_FENCE:
-		if (unlikely(!val))
+		if (!val)
 			goto exit;
 
 		ret = copy_from_user(&prev_user_fd, (void __user *)val,
@@ -5797,14 +5809,14 @@ static int sde_crtc_atomic_set_property(struct drm_crtc *crtc,
 		if (prev_user_fd == -1) {
 			ret = _sde_crtc_get_output_fence(crtc, state,
 					&fence_user_fd);
-			if (unlikely(ret)) {
+			if (ret) {
 				SDE_ERROR("fence create failed rc:%d\n", ret);
 				goto exit;
 			}
 
 			ret = copy_to_user((uint64_t __user *)(uintptr_t)val,
 					&fence_user_fd, sizeof(uint64_t));
-			if (unlikely(ret)) {
+			if (ret) {
 				SDE_ERROR("copy to user failed rc:%d\n", ret);
 				put_unused_fd(fence_user_fd);
 				ret = -EFAULT;

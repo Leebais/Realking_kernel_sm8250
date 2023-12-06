@@ -95,8 +95,6 @@ static const struct panel_ioctl_desc panel_ioctls[] = {
 	#endif /* OPLUS_FEATURE_AOD_RAMLESS */
 	PANEL_IOCTL_DEF(PANEL_IOCTL_SET_FP_TYPE, oplus_ofp_set_fp_type),
 	PANEL_IOCTL_DEF(PANEL_IOCTL_GET_FP_TYPE, oplus_ofp_get_fp_type),
-	/* Apollo DC backlight */
-	PANEL_IOCTL_DEF(PANEL_IOCTL_SET_DC_REAL_BACKLIGHT, oplus_display_panel_set_dc_real_brightness),
 };
 
 int oplus_display_fix_apollo_level(void)
@@ -425,7 +423,7 @@ static const struct file_operations panel_ops =
 	.mmap               = panel_mmap,
 };
 
-static int __init oplus_display_panel_init(void)
+static int __init oplus_display_panel_init()
 {
 	int rc = 0;
 
@@ -474,7 +472,7 @@ err_class_create:
 	return rc;
 }
 
-void __exit oplus_display_panel_exit(void)
+void __exit oplus_display_panel_exit()
 {
 	pr_info("%s\n", __func__);
 
