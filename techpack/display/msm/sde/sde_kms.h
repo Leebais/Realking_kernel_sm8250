@@ -82,7 +82,7 @@
 #define SDE_ERROR(fmt, ...) pr_err("[sde error]" fmt, ##__VA_ARGS__)
 
 #ifdef OPLUS_BUG_STABILITY
-#include <oplus/system/oplus_mm_kevent_fb.h>
+#include <soc/oplus/system/oplus_mm_kevent_fb.h>
 #define SDE_MM_ERROR(fmt, ...) \
 	do { \
 		pr_err("[sde error]" fmt, ##__VA_ARGS__); \
