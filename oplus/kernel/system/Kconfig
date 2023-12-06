@@ -28,6 +28,7 @@ config OPLUS_DEVICE_IFNO
 source "drivers/soc/oplus/system/oplus_project/Kconfig"
 source "drivers/soc/oplus/system/project_info/Kconfig"
 source "drivers/soc/oplus/system/cmdline_parser/Kconfig"
+source "drivers/soc/oplus/system/oplus_mm_fb/Kconfig"
 
 #ifdef OPLUS_FEATURE_MISC
 source "drivers/soc/oplus/system/misc/Kconfig"

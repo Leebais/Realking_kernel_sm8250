@@ -9,6 +9,8 @@ ifdef CONFIG_OPLUS_SYSTEM_KERNEL_QCOM
 obj-$(CONFIG_OPLUS_FEATURE_PROJECTINFO)	+=  project_info/
 endif
 
+obj-y += oplus_mm_fb/
+
 #ifdef OPLUS_FEATURE_MISC
 obj-y += misc/
 #endif /* OPLUS_FEATURE_MISC */
