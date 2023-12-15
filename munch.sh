@@ -13,7 +13,7 @@ export KBUILD_COMPILER_STRING="$($MAIN/clang/bin/clang --version | head -n 1 | p
 
 if ! [ -d "$MAIN/clang" ]; then
     echo "ZYC clang not found! Cloning..."
-    if ! git clone -q https://gitlab.com/ZyCromerZ/clang.git --depth=1 --single-branch $MAIN/clang; then
+    if ! git clone -q https://github.com/socaindra/ZyCromerZ-Clang.git --depth=1 --single-branch $MAIN/clang; then
         echo "Cloning failed! Aborting..."
         exit 1
     fi
