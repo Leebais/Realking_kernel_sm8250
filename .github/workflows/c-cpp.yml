@@ -1,16 +1,11 @@
 name: C/C++ CIcheck
 
 on:
-  push:
-    branches: [ "munch" ]
-  pull_request:
-    branches: [ "munch" ]
+  workflow_dispatch:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v3
     - name: make
