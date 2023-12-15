@@ -1,0 +1,19 @@
+name: C/C++ CIcheck
+
+on:
+  push:
+    branches: [ "munch" ]
+  pull_request:
+    branches: [ "munch" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: configure
+      run: ./configure
+    - name: make
+      run: ./munch.sh
